@@ -15,13 +15,13 @@ public class jsConnect {
     * @param message A user-readable message for the error.
     * @return 
     */
-   protected static Map Error(String code, String message) {
-      Map result = new HashMap();
-      result.put("error", code);
-      result.put("message", message);
+   protected static Map<String, String> Error(String code, String message) {
+   	Map<String, String> result = new HashMap<String, String>();
+		result.put("error", code);
+		result.put("message", message);
 
-      return result;
-   }
+		return result;
+	}
 
    /**
     * Returns a JSONP formatted string suitable to be consumed by jsConnect.
@@ -34,96 +34,109 @@ public class jsConnect {
     * @param secure: Whether or not to check security on the request. You can leave this false for testing, but you should make it true in production.
     * @return The JSONP formatted string representing the current user.
     */
-   public static String GetJsConnectString(Map user, Map request, String clientID, String secret, Boolean secure) {
-      Map error = null;
+   public static String GetVanillaSSOString(Map<String, String> user,
+   		Map<String, Object> request, String clientID, String secret,
+			Boolean secure) {
+		Map<String, String> error = null;
 
-      long timestamp = 0;
-      try {
-         timestamp = Long.parseLong(Val(request, "timestamp"));
-      } catch (Exception ex) {
-         timestamp = 0;
-      }
-      long currentTimestamp = jsConnect.Timestamp();
+		long timestamp = 0;
+		try {
+			timestamp = Long.parseLong(Val(request, "timestamp"));
+		} catch (Exception ex) {
+			timestamp = 0;
+		}
+		long currentTimestamp = vanillaSSO.Timestamp();
 
-      if (secure) {
-         if (Val(request, "client_id") == null) {
-            error = jsConnect.Error("invalid_request", "The client_id parameter is missing.");
-         } else if (!Val(request, "client_id").equals(clientID)) {
-            error = jsConnect.Error("invalid_client", "Unknown client " + Val(request, "client_id") + ".");
-         } else if (Val(request, "timestamp") == null && Val(request, "signature") == null) {
-            if (user != null && !user.isEmpty()) {
-               error = new HashMap();
-               error.put("name", user.get("name"));
-               error.put("photourl", user.containsKey("photourl") ? user.get("photourl") : "");
-            } else {
-               error = new HashMap();
-               error.put("name", "");
-               error.put("photourl", "");
-            }
-         } else if (timestamp == 0) {
-            error = jsConnect.Error("invalid_request", "The timestamp is missing or invalid.");
-         } else if (Val(request, "signature") == null) {
-            error = jsConnect.Error("invalid_request", "The signature is missing.");
-         } else if (Math.abs(currentTimestamp - timestamp) > 30 * 60) {
-            error = jsConnect.Error("invalid_request", "The timestamp is invalid.");
-         } else {
-            // Make sure the timestamp's signature checks out.
-            String timestampSig = jsConnect.MD5(Long.toString(timestamp) + secret);
-            if (!timestampSig.equals(Val(request, "signature"))) {
-               error = jsConnect.Error("access_denied", "Signature invalid.");
-            }
-         }
-      }
+		if (secure) {
+			if (Val(request, "client_id") == null) {
+				error = vanillaSSO.Error("invalid_request",
+						"The client_id parameter is missing.");
+			} else if (!Val(request, "client_id").equals(clientID)) {
+				error = vanillaSSO.Error("invalid_client", "Unknown client "
+						+ Val(request, "client_id") + ".");
+			} else if (Val(request, "timestamp") == null
+					&& Val(request, "signature") == null) {
+				if (user != null && !user.isEmpty()) {
+					error = new HashMap<String, String>();
+					error.put("name", user.get("name"));
+					error.put("photourl",
+							user.containsKey("photourl") ? user.get("photourl")
+									: "");
+				} else {
+					error = new HashMap<String, String>();
+					error.put("name", "");
+					error.put("photourl", "");
+				}
+			} else if (timestamp == 0) {
+				error = vanillaSSO.Error("invalid_request",
+						"The timestamp is missing or invalid.");
+			} else if (Val(request, "signature") == null) {
+				error = vanillaSSO.Error("invalid_request",
+						"The signature is missing.");
+			} else if (Math.abs(currentTimestamp - timestamp) > 30 * 60) {
+				error = vanillaSSO.Error("invalid_request",
+						"The timestamp is invalid.");
+			} else {
+				// Make sure the timestamp's signature checks out.
+				String timestampSig = vanillaSSO.MD5(Long.toString(timestamp)
+						+ secret);
+				if (!timestampSig.equals(Val(request, "signature"))) {
+					error = vanillaSSO.Error("access_denied",
+							"Signature invalid.");
+				}
+			}
+		}
 
-      Map result;
+		Map<String, String> result;
 
-      if (error != null) {
-         result = error;
-      } else if (user != null && !user.isEmpty()) {
-         result = new LinkedHashMap(user);
-         SignJsConnect(result, clientID, secret, true);
-      } else {
-         result = new LinkedHashMap();
-         result.put("name", "");
-         result.put("photourl", "");
-      }
+		if (error != null) {
+			result = error;
+		} else if (user != null && !user.isEmpty()) {
+			result = new LinkedHashMap<String, String>(user);
+			SignvanillaSSO(result, clientID, secret, true);
+		} else {
+			result = new LinkedHashMap<String, String>();
+			result.put("name", "");
+			result.put("photourl", "");
+		}
 
-      String json = jsConnect.JsonEncode(result);
-      if (Val(request, "callback") == null) {
-         return json;
-      } else {
-         return Val(request, "callback") + "(" + json + ");";
-      }
-   }
+		String json = vanillaSSO.JsonEncode(result);
+		if (Val(request, "callback") == null) {
+			return json;
+		} else {
+			return Val(request, "callback") + "(" + json + ");";
+		}
+	}
 
    /**
     * JSON encode some data.
     * @param data The data to encode.
     * @return The JSON encoded data.
     */
-   public static String JsonEncode(Map data) {
-      StringBuilder result = new StringBuilder();
-      Iterator iterator = data.entrySet().iterator();
+   public static String JsonEncode(Map<String, String> data) {
+   	StringBuilder result = new StringBuilder();
+		Iterator<Entry<String, String>> iterator = data.entrySet().iterator();
 
-      while (iterator.hasNext()) {
-         if (result.length() > 0) {
-            result.append(", ");
-         }
+		while (iterator.hasNext()) {
+			if (result.length() > 0) {
+				result.append(", ");
+			}
 
-         Map.Entry v = (Map.Entry) iterator.next();
+			Map.Entry<String, String> v = (Map.Entry<String, String>) iterator
+					.next();
 
-         String key = v.getKey().toString();
-         key = key.replace("\"", "\\\"");
+			String key = v.getKey().toString();
+			key = key.replace("\"", "\\\"");
 
-         String value = v.getValue().toString();
-         value = value.replace("\"", "\\\"");
-         String q = "\"";
+			String value = v.getValue().toString();
+			value = value.replace("\"", "\\\"");
+			String q = "\"";
 
-         result.append(q + key + q + ": " + q + value + q);
-      }
+			result.append(q + key + q + ": " + q + value + q);
+		}
 
-      return "{ " + result.toString() + " }";
-   }
+		return "{ " + result.toString() + " }";
+	}
 
    /**
     * Compute the MD5 hash of a string.
@@ -131,25 +144,27 @@ public class jsConnect {
     * @return A hex encoded string representing the MD5 hash of the string.
     */
    public static String MD5(String password) {
-      try {
-         java.security.MessageDigest digest = java.security.MessageDigest.getInstance("MD5");
-         digest.update(password.getBytes("UTF-8"));
-         byte[] hash = digest.digest();
+   	try {
+			java.security.MessageDigest digest = java.security.MessageDigest
+					.getInstance("MD5");
+			digest.update(password.getBytes("UTF-8"));
+			byte[] hash = digest.digest();
 
-         StringBuilder ret = new StringBuilder();
-         for (int i = 0; i < hash.length; i++) {
-            String hex = Integer.toHexString(0xFF & hash[i]);
-            if (hex.length() == 1) {
-               // could use a for loop, but we're only dealing with a single byte
-               ret.append('0');
-            }
-            ret.append(hex);
-         }
-         return ret.toString();
-      } catch (Exception ex) {
-         return "ERROR";
-      }
-   }
+			StringBuilder ret = new StringBuilder();
+			for (int i = 0; i < hash.length; i++) {
+				String hex = Integer.toHexString(0xFF & hash[i]);
+				if (hex.length() == 1) {
+					// could use a for loop, but we're only dealing with a
+					// single byte
+					ret.append('0');
+				}
+				ret.append(hex);
+			}
+			return ret.toString();
+		} catch (Exception ex) {
+			return "ERROR";
+		}
+	}
 
    /**
     * Get a value from a map.
@@ -158,22 +173,23 @@ public class jsConnect {
     * @param defaultValue The default value if the map doesn't contain the value.
     * @return The value from the map or the default if it isn't found.
     */
-   protected static String Val(Map request, String key, String defaultValue) {
-      try {
-         Object result = null;
-         if (request.containsKey(key)) {
-            result = request.get(key);
-            if (result instanceof String[]) {
-               return ((String[]) request.get(key))[0];
-            } else {
-               return result.toString();
-            }
-         }
-      } catch (Exception ex) {
-         return defaultValue;
-      }
-      return defaultValue;
-   }
+   protected static String Val(Map<String, Object> request, String key,
+   		String defaultValue) {
+		try {
+			Object result = null;
+			if (request.containsKey(key)) {
+				result = request.get(key);
+				if (result instanceof String[]) {
+					return ((String[]) request.get(key))[0];
+				} else {
+					return result.toString();
+				}
+			}
+		} catch (Exception ex) {
+			return defaultValue;
+		}
+		return defaultValue;
+	}
 
    /**
     * Get a value from a map.
@@ -181,9 +197,9 @@ public class jsConnect {
     * @param key The key of the value.
     * @return The value from the map or the null if it isn't found.
     */
-   protected static String Val(Map request, String key) {
-      return Val(request, key, null);
-   }
+   protected static String Val(Map<String, Object> request, String key) {
+   	return Val(request, key, null);
+	}
 
    /**
     * Sign a jsConnect response. Responses are signed so that the site requesting the response knows that this is a valid site signing in.
@@ -193,44 +209,46 @@ public class jsConnect {
     * @param setData Whether or not to add the signature information to the data.
     * @return The computed signature of the data.
     */
-   public static String SignJsConnect(Map data, String clientID, String secret, Boolean setData) {
-      // Generate a sorted list of the keys.
-      String[] keys = new String[data.keySet().size()];
-      data.keySet().toArray(keys);
-      Arrays.sort(keys, String.CASE_INSENSITIVE_ORDER);
+   public static String SignvanillaSSO(Map<String, String> data,
+   		String clientID, String secret, Boolean setData) {
+		// Generate a sorted list of the keys.
+		String[] keys = new String[data.keySet().size()];
+		data.keySet().toArray(keys);
+		Arrays.sort(keys, String.CASE_INSENSITIVE_ORDER);
 
-      // Generate the String to sign.
-      StringBuilder sigStr = new StringBuilder();
-      for (int i = 0; i < keys.length; i++) {
-         if (sigStr.length() > 0) {
-            sigStr.append("&");
-         }
+		// Generate the String to sign.
+		StringBuilder sigStr = new StringBuilder();
+		for (int i = 0; i < keys.length; i++) {
+			if (sigStr.length() > 0) {
+				sigStr.append("&");
+			}
 
-         String key = keys[i];
-         String value = data.get(key).toString();
+			String key = keys[i];
+			String value = data.get(key).toString();
 
-         try {
-            sigStr.append(java.net.URLEncoder.encode(key.toLowerCase(), "UTF-8"));
-            sigStr.append("=");
-            sigStr.append(java.net.URLEncoder.encode(value, "UTF-8"));
-         } catch (Exception ex) {
-            if (setData) {
-               data.put("clientid", clientID);
-               data.put("signature", "ERROR");
-            }
-            return "ERROR";
-         }
-      }
+			try {
+				sigStr.append(java.net.URLEncoder.encode(key.toLowerCase(),
+						"UTF-8"));
+				sigStr.append("=");
+				sigStr.append(java.net.URLEncoder.encode(value, "UTF-8"));
+			} catch (Exception ex) {
+				if (setData) {
+					data.put("clientid", clientID);
+					data.put("signature", "ERROR");
+				}
+				return "ERROR";
+			}
+		}
 
-      // MD5 sign the String with the secret.
-      String signature = jsConnect.MD5(sigStr.toString() + secret);
+		// MD5 sign the String with the secret.
+		String signature = vanillaSSO.MD5(sigStr.toString() + secret);
 
-      if (setData) {
-         data.put("clientid", clientID);
-         data.put("signature", signature);
-      }
-      return signature;
-   }
+		if (setData) {
+			data.put("clientid", clientID);
+			data.put("signature", signature);
+		}
+		return signature;
+	}
 
    /**
     * Returns the current timestamp of the server, suitable for synching with the site.
